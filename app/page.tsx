@@ -2,8 +2,8 @@ import { ToolGrid } from "@/components/tools/ToolGrid";
 import { getTools } from "@/lib/api";
 import { Tool } from "@/lib/types";
 
-// Revalidate every 5 minutes (ISR)
-export const revalidate = 300;
+// Force dynamic — API is only available at runtime, not build time
+export const dynamic = "force-dynamic";
 
 async function getToolsData(): Promise<Tool[]> {
   try {
