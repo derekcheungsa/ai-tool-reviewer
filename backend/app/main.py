@@ -1,0 +1,175 @@
+"""FastAPI application — AI Tool Review Aggregator backend.
+
+Routes:
+  GET /api/tools              — list all tools with sentiment summaries
+  GET /api/tools/{id}         — tool detail + reviews
+  GET /api/compare?tools=a,b  — side-by-side comparison
+  GET /api/stats              — aggregate statistics
+"""
+
+from __future__ import annotations
+
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, Depends, Query, HTTPException
+from sqlalchemy import func, case
+from sqlalchemy.orm import Session, joinedload
+
+from database import get_db, engine, Base
+from models import Tool, Review, SentimentSummary
+from schemas import (
+    ToolOut, ToolDetailOut, ReviewOut, SentimentSummaryOut,
+    ToolWithSummary, CompareTool, CompareResponse, StatsOut,
+)
+
+
+# ── Lifespan ─────────────────────────────────────────────────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Auto-create tables on startup (dev convenience; use Alembic in prod)."""
+    Base.metadata.create_all(bind=engine)
+    yield
+
+
+# ── App factory ──────────────────────────────────────────────────────
+
+app = FastAPI(
+    title="AI Tool Review Aggregator",
+    description="Backend for scraping, analyzing, and comparing AI coding tool reviews.",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+
+
+# ── GET /api/tools ───────────────────────────────────────────────────
+
+@app.get("/api/tools", response_model=list[ToolWithSummary])
+def list_tools(
+    category: str | None = Query(None, description="Filter by category slug"),
+    db: Session = Depends(get_db),
+):
+    """Return all tools, each with its sentiment summaries."""
+    q = db.query(Tool)
+    if category:
+        q = q.filter(Tool.category == category)
+
+    tools = q.options(joinedload(Tool.sentiment_summaries)).all()
+    # Re-query with joinedload is cleaner, but for simplicity we rely on
+    # the relationship being eagerly loaded above
+    return tools
+
+
+# ── GET /api/tools/{id} ──────────────────────────────────────────────
+
+@app.get("/api/tools/{tool_id}", response_model=ToolDetailOut)
+def get_tool(tool_id: str, db: Session = Depends(get_db)):
+    """Return tool details, its reviews, and sentiment summaries."""
+    tool = (
+        db.query(Tool)
+        .options(
+            joinedload(Tool.reviews),
+            joinedload(Tool.sentiment_summaries),
+        )
+        .filter(Tool.id == tool_id)
+        .first()
+    )
+    if not tool:
+        raise HTTPException(status_code=404, detail="Tool not found")
+    return tool
+
+
+# ── GET /api/compare ─────────────────────────────────────────────────
+
+@app.get("/api/compare", response_model=CompareResponse)
+def compare_tools(
+    tools: str = Query(..., description="Comma-separated tool ids"),
+    db: Session = Depends(get_db),
+):
+    """Side-by-side comparison of multiple tools."""
+    tool_ids = [t.strip() for t in tools.split(",") if t.strip()]
+    if len(tool_ids) < 1:
+        raise HTTPException(status_code=400, detail="At least one tool id required")
+
+    results: list[CompareTool] = []
+    for tid in tool_ids:
+        tool = (
+            db.query(Tool)
+            .options(
+                joinedload(Tool.reviews),
+                joinedload(Tool.sentiment_summaries),
+            )
+            .filter(Tool.id == tid)
+            .first()
+        )
+        if tool:
+            results.append(
+                CompareTool(
+                    tool=tool,
+                    reviews=tool.reviews,
+                    sentiment_summaries=tool.sentiment_summaries,
+                )
+            )
+
+    return CompareResponse(tools=results)
+
+
+# ── GET /api/stats ───────────────────────────────────────────────────
+
+@app.get("/api/stats", response_model=StatsOut)
+def get_stats(db: Session = Depends(get_db)):
+    """Aggregate statistics across all tools and reviews."""
+    total_tools = db.query(func.count(Tool.id)).scalar() or 0
+    total_reviews = db.query(func.count(Review.id)).scalar() or 0
+
+    # Reviews per source
+    source_rows = (
+        db.query(Review.source, func.count(Review.id))
+        .group_by(Review.source)
+        .all()
+    )
+    sources = {row[0]: row[1] for row in source_rows}
+
+    # Top 5 tools by average sentiment
+    top_sentiment = (
+        db.query(Tool)
+        .join(SentimentSummary)
+        .group_by(Tool.id)
+        .order_by(func.avg(SentimentSummary.avg_sentiment).desc())
+        .limit(5)
+        .all()
+    )
+
+    # Top 5 tools by review count
+    most_reviewed = (
+        db.query(Tool)
+        .join(SentimentSummary)
+        .group_by(Tool.id)
+        .order_by(func.sum(SentimentSummary.review_count).desc())
+        .limit(5)
+        .all()
+    )
+
+    # Tools per category
+    cat_rows = (
+        db.query(Tool.category, func.count(Tool.id))
+        .group_by(Tool.category)
+        .all()
+    )
+    categories = {row[0]: row[1] for row in cat_rows}
+
+    return StatsOut(
+        total_tools=total_tools,
+        total_reviews=total_reviews,
+        sources=sources,
+        top_rated=top_sentiment,
+        most_reviewed=most_reviewed,
+        categories=categories,
+    )
+
+
+# ── Health check ─────────────────────────────────────────────────────
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
