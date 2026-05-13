@@ -180,6 +180,33 @@ def get_stats(db: Session = Depends(get_db)):
     )
 
 
+# ── Scraper trigger ──────────────────────────────────────────────────
+
+@app.post("/api/scrape/{source}")
+def trigger_scrape(
+    source: str,
+    tool_slug: str | None = None,
+    dry_run: bool = False,
+):
+    """Trigger a scraper run. source: reddit, trustpilot, or g2."""
+    from database import SessionLocal
+    db = SessionLocal()
+    try:
+        if source == "reddit":
+            from scrapers.reddit_scraper import scrape_reddit
+            results = scrape_reddit(db, tool_slug=tool_slug, dry_run=dry_run)
+        elif source in ("trustpilot", "g2"):
+            from scrapers.firecrawl_scraper import scrape_firecrawl
+            results = scrape_firecrawl(db, source=source, tool_slug=tool_slug, dry_run=dry_run)
+        else:
+            return {"error": f"Unknown source: {source}"}
+        return {"status": "ok", "source": source, "results": results}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+    finally:
+        db.close()
+
+
 # ── Health check ─────────────────────────────────────────────────────
 
 @app.get("/health")
