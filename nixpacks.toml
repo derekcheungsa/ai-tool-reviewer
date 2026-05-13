@@ -1,15 +1,18 @@
 # Nixpacks config for monorepo: Next.js + FastAPI
 providers = ["node", "python"]
 
-# install runs AFTER providers (pip/npm available)
+# setup: copy requirements.txt to root so Python provider auto-detects it
+[phases.setup]
+  cmds = ["cp backend/requirements.txt ./requirements.txt"]
+
+# install: npm ci + make start.sh executable
 [phases.install]
   cmds = [
-    "python3 -m pip install -r backend/requirements.txt",
     "npm ci",
     "chmod +x start.sh"
   ]
 
-# build runs after install
+# build: Next.js production build
 [phases.build]
   cmds = ["npm run build"]
 
