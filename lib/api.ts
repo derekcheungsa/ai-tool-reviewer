@@ -1,6 +1,6 @@
 import { Tool, ToolDetail, CompareData, Stats, ReviewFilters } from "./types";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${BASE_URL}${path}`;
