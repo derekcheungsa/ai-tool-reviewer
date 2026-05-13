@@ -4,7 +4,7 @@ providers = ["node", "python"]
 # install runs AFTER providers (pip/npm available)
 [phases.install]
   cmds = [
-    "pip install -r backend/requirements.txt",
+    "python3 -m pip install -r backend/requirements.txt",
     "npm ci",
     "chmod +x start.sh"
   ]
