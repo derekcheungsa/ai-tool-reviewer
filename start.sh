@@ -7,7 +7,7 @@ echo "=== AI Tool Review Aggregator ==="
 # Start FastAPI backend in background
 echo "Starting FastAPI backend on port 8000..."
 cd backend
-python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+/opt/venv/bin/python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
 
 # Wait for backend to be ready
