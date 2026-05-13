@@ -79,20 +79,36 @@ def _utcnow() -> datetime:
 
 # ── Firecrawl API ─────────────────────────────────────────────────────
 
-def firecrawl_scrape(url: str, api_key: str) -> str:
-    """Scrape a URL with Firecrawl and return markdown content."""
+def firecrawl_scrape(url: str, api_key: str, source: str = "g2") -> str:
+    """Scrape a URL with Firecrawl and return markdown content.
+
+    Uses enhanced proxy + waitFor for Trustpilot (Cloudflare bypass).
+    Uses default proxy for G2 (no anti-bot needed).
+    """
+    if source == "trustpilot":
+        payload: dict = {
+            "url": url,
+            "formats": ["markdown"],
+            "onlyMainContent": True,
+            "proxy": "enhanced",
+            "waitFor": 5000,
+            "maxAge": 86400000,  # 24h cache (enhanced costs 5 credits)
+        }
+    else:
+        payload = {
+            "url": url,
+            "formats": ["markdown"],
+            "onlyMainContent": True,
+            "maxAge": 3600000,  # 1h cache
+        }
+
     resp = httpx.post(
         f"{FIRECRAWL_BASE}/scrape",
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         },
-        json={
-            "url": url,
-            "formats": ["markdown"],
-            "onlyMainContent": True,
-            "maxAge": 3600000,  # 1 hour cache
-        },
+        json=payload,
         timeout=120,
     )
     resp.raise_for_status()
@@ -250,7 +266,7 @@ def scrape_firecrawl(
 
         try:
             logger.info(f"Firecrawl scraping {source}: {tool.name} → {page_url}")
-            markdown = firecrawl_scrape(page_url, api_key)
+            markdown = firecrawl_scrape(page_url, api_key, source=source)
         except Exception as exc:
             logger.error(f"Firecrawl error for {tool.slug}: {exc}")
             finish_collection_run(db, run, items_collected=0, items_new=0, error=str(exc))
