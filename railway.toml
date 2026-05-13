@@ -1,0 +1,11 @@
+# Railway monorepo config — deploys Next.js frontend + FastAPI backend
+# Railway auto-detects: Nixpacks builds the Dockerfile, Postgres plugin handles the DB
+
+[build]
+  builder = "nixpacks"
+  # Install Python + Node.js dependencies
+  nixpacks.plan.providers = ["node", "python"]
+
+[deploy]
+  # Start both services via a simple script
+  startCommand = "./start.sh"

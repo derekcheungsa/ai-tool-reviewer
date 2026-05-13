@@ -1,0 +1,18 @@
+# Nixpacks config for monorepo: Next.js + FastAPI
+[providers]
+  providers = ["node", "python"]
+
+[phases.setup]
+  cmds = [
+    "pip install -r backend/requirements.txt",
+    "npm ci"
+  ]
+
+[phases.build]
+  cmds = ["npm run build"]
+
+[phases.install]
+  cmds = ["chmod +x start.sh"]
+
+[start]
+  cmd = "./start.sh"
