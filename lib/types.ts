@@ -39,7 +39,7 @@ export interface SentimentSummary {
 }
 
 export interface PerSourceSentiment {
-  source: "reddit" | "trustpilot" | "g2";
+  source: "reddit" | "trustpilot" | "g2" | "producthunt";
   avgRating: number;
   avgSentiment: number;
   positivePct: number;
@@ -119,7 +119,7 @@ export interface ToolFilters {
 }
 
 export type SentimentLabel = "positive" | "negative" | "neutral" | "mixed";
-export type ReviewSource = "reddit" | "trustpilot" | "g2" | "all";
+export type ReviewSource = "reddit" | "trustpilot" | "g2" | "producthunt" | "all";
 
 export interface ReviewFilters {
   source: ReviewSource;
@@ -152,5 +152,11 @@ export const SOURCE_CONFIG: Record<string, {
     icon: "📊",
     color: "#FF492C",
     url: "https://g2.com",
+  },
+  producthunt: {
+    label: "Product Hunt",
+    icon: "🐱",
+    color: "#DA552F",
+    url: "https://producthunt.com",
   },
 };

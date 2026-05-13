@@ -195,7 +195,7 @@ def trigger_scrape(
         if source == "reddit":
             from scrapers.reddit_scraper import scrape_reddit
             results = scrape_reddit(db, tool_slug=tool_slug, dry_run=dry_run)
-        elif source in ("trustpilot", "g2"):
+        elif source in ("trustpilot", "g2", "producthunt"):
             from scrapers.firecrawl_scraper import scrape_firecrawl
             results = scrape_firecrawl(db, source=source, tool_slug=tool_slug, dry_run=dry_run)
         else:

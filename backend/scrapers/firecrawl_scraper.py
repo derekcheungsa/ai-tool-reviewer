@@ -65,11 +65,31 @@ G2_URLS: dict[str, str] = {
     "bubble": "https://www.g2.com/products/bubble/reviews",
     "glide": "https://www.g2.com/products/glide/reviews",
     "devin": "https://www.g2.com/sellers/cognition",
+    "lovable": "https://www.g2.com/products/lovable/reviews",
+    "taskade-genesis": "https://www.g2.com/products/taskade/reviews",
+}
+
+# Product Hunt — community reviews & discussions for AI/dev tools
+PRODUCTHUNT_URLS: dict[str, str] = {
+    "cursor": "https://www.producthunt.com/products/cursor-ai/reviews",
+    "bolt-new": "https://www.producthunt.com/products/bolt-new/reviews",
+    "lovable": "https://www.producthunt.com/products/lovable/reviews",
+    "replit-agent": "https://www.producthunt.com/products/replit/reviews",
+    "v0": "https://www.producthunt.com/products/v0-by-vercel/reviews",
+    "windsurf": "https://www.producthunt.com/products/windsurf/reviews",
+    "claude-code": "https://www.producthunt.com/products/claude-code/reviews",
+    "codex-cli": "https://www.producthunt.com/products/openai-codex-cli/reviews",
+    "aider": "https://www.producthunt.com/products/aider/reviews",
+    "devin": "https://www.producthunt.com/products/cognition-ai/reviews",
+    "opencode": "https://www.producthunt.com/products/opencode/reviews",
+    "base44": "https://www.producthunt.com/products/base44/reviews",
+    "google-antigravity": "https://www.producthunt.com/products/google-antigravity/reviews",
 }
 
 URL_MAPS = {
     "trustpilot": TRUSTPILOT_URLS,
     "g2": G2_URLS,
+    "producthunt": PRODUCTHUNT_URLS,
 }
 
 
@@ -226,7 +246,56 @@ def parse_reviews(markdown: str, source: str) -> list[dict]:
         return _parse_trustpilot_markdown(markdown)
     elif source == "g2":
         return _parse_g2_markdown(markdown)
+    elif source == "producthunt":
+        return _parse_producthunt_markdown(markdown)
     return []
+
+
+def _parse_producthunt_markdown(md: str) -> list[dict]:
+    """Extract reviews from Product Hunt markdown.
+
+    Product Hunt review pages have:
+    - User reviews with star ratings (1-5) or upvotes
+    - Comment threads with pros/cons discussion
+    - Maker responses
+    """
+    reviews = []
+    # Product Hunt reviews are often separated by user avatars, dividers, or headings
+    sections = re.split(r"\n---\n|\n###\s|\n####\s", md)
+
+    for section in sections:
+        section = section.strip()
+        if len(section) < 60:
+            continue
+
+        lines = [l.strip() for l in section.split("\n") if l.strip()]
+        title = lines[0] if lines else ""
+
+        # Try to find star rating
+        rating = None
+        star_match = re.search(r"(\d)(?:\.\d)?\s*(?:out of|/)\s*5", section)
+        if star_match:
+            try:
+                rating = int(float(star_match.group(1)))
+            except ValueError:
+                pass
+
+        # Try to find author
+        author = ""
+        author_match = re.search(r"(?:by|from|—)\s*([\w\s\.@]+)", title)
+        if author_match:
+            author = author_match.group(1).strip()
+
+        body = "\n".join(lines[1:5]) if len(lines) > 1 else ""
+
+        reviews.append({
+            "title": title[:200] if title else None,
+            "body": body[:2000],
+            "author": author,
+            "rating": rating,
+        })
+
+    return reviews
 
 
 # ── Main scraper ──────────────────────────────────────────────────────
