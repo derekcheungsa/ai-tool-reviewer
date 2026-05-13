@@ -1,13 +1,15 @@
 # Nixpacks config for monorepo: Next.js + FastAPI
-providers = ["node", "python"]
+providers = ["node"]
 
-# setup: copy requirements.txt to root so Python provider auto-detects it
+# setup: install system Python + pip (Nix Python lacks pip)
 [phases.setup]
+  aptPkgs = ["python3", "python3-pip"]
   cmds = ["cp backend/requirements.txt ./requirements.txt"]
 
-# install: npm ci + make start.sh executable
+# install: pip + npm
 [phases.install]
   cmds = [
+    "pip3 install -r requirements.txt",
     "npm ci"
   ]
 
