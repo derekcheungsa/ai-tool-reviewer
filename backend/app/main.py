@@ -27,8 +27,20 @@ from schemas import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Auto-create tables on startup (dev convenience; use Alembic in prod)."""
+    """Auto-create tables and seed tools catalog on startup."""
     Base.metadata.create_all(bind=engine)
+    # Seed tools catalog (idempotent — skips existing)
+    try:
+        from scripts.seed import seed
+        from database import SessionLocal
+        db = SessionLocal()
+        try:
+            seed(db)
+        finally:
+            db.close()
+    except Exception:
+        import traceback
+        traceback.print_exc()
     yield
 
 

@@ -1,16 +1,10 @@
 #!/bin/bash
-# Railway start script — seeds DB, starts FastAPI backend + Next.js frontend
+# Railway start script — starts FastAPI backend + Next.js frontend
 set -e
 
 echo "=== AI Tool Review Aggregator ==="
 
-# Seed database with tools catalog (idempotent — skips existing)
-echo "Seeding database..."
-cd backend
-/opt/venv/bin/python3 -m scripts.seed
-cd ..
-
-# Start FastAPI backend in background
+# Start FastAPI backend in background (auto-seeds DB on startup)
 echo "Starting FastAPI backend on port 8000..."
 cd backend
 /opt/venv/bin/python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
