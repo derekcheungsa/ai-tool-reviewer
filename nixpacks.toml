@@ -8,8 +8,7 @@ providers = ["node", "python"]
 # install: npm ci + make start.sh executable
 [phases.install]
   cmds = [
-    "npm ci",
-    "chmod +x start.sh"
+    "npm ci"
   ]
 
 # build: Next.js production build
