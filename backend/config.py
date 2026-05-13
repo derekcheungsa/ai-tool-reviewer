@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     # G2 (RapidAPI)
     rapidapi_key: str = ""
 
+    # Firecrawl (unified scraper for Trustpilot + G2)
+    firecrawl_api_key: str = ""
+
     # OpenAI (optional)
     openai_api_key: str = ""
 

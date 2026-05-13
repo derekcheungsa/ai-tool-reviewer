@@ -21,8 +21,7 @@ from loguru import logger
 
 from database import SessionLocal
 from scrapers.reddit_scraper import scrape_reddit
-from scrapers.trustpilot_scraper import scrape_trustpilot
-from scrapers.g2_scraper import scrape_g2
+from scrapers.firecrawl_scraper import scrape_firecrawl
 
 
 def main():
@@ -45,10 +44,8 @@ def main():
             try:
                 if source == "reddit":
                     scrape_reddit(db, tool_slug=args.tool_slug, dry_run=args.dry_run)
-                elif source == "trustpilot":
-                    scrape_trustpilot(db, tool_slug=args.tool_slug, dry_run=args.dry_run)
-                elif source == "g2":
-                    scrape_g2(db, tool_slug=args.tool_slug, dry_run=args.dry_run)
+                elif source in ("trustpilot", "g2"):
+                    scrape_firecrawl(db, source=source, tool_slug=args.tool_slug, dry_run=args.dry_run)
             except Exception as exc:
                 logger.exception(f"{source} scraper failed: {exc}")
             logger.info(f"=== Finished {source} scraper ===")
