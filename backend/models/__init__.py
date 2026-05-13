@@ -74,7 +74,7 @@ class Review(Base):
     __table_args__ = (
         UniqueConstraint("source", "source_id", name="uq_review_source_id"),
         CheckConstraint(
-            "source IN ('reddit', 'trustpilot', 'g2')",
+            "source IN ('reddit', 'trustpilot', 'g2', 'producthunt')",
             name="ck_review_source",
         ),
         Index("ix_reviews_tool_id", "tool_id"),

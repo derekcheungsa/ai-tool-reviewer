@@ -27,8 +27,17 @@ from schemas import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Auto-create tables and seed tools catalog on startup."""
+    """Auto-create tables, run migrations, and seed tools catalog on startup."""
     Base.metadata.create_all(bind=engine)
+    # Migration: update check constraint to include producthunt
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE reviews DROP CONSTRAINT IF EXISTS ck_review_source"))
+            conn.execute(text("ALTER TABLE reviews ADD CONSTRAINT ck_review_source CHECK (source IN ('reddit', 'trustpilot', 'g2', 'producthunt'))"))
+            conn.commit()
+    except Exception:
+        pass  # constraint might already be updated or table doesn't exist
     # Seed tools catalog (idempotent — skips existing)
     try:
         from scripts.seed import seed
