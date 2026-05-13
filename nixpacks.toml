@@ -1,6 +1,5 @@
 # Nixpacks config for monorepo: Next.js + FastAPI
-[providers]
-  providers = ["node", "python"]
+providers = ["node", "python"]
 
 [phases.setup]
   cmds = [
