@@ -71,7 +71,7 @@ G2_URLS: dict[str, str] = {
 
 # Product Hunt — community reviews & discussions for AI/dev tools
 PRODUCTHUNT_URLS: dict[str, str] = {
-    "cursor": "https://www.producthunt.com/products/cursor-ai/reviews",
+    "cursor": "https://www.producthunt.com/products/cursor/reviews",
     "bolt-new": "https://www.producthunt.com/products/bolt-new/reviews",
     "lovable": "https://www.producthunt.com/products/lovable/reviews",
     "replit-agent": "https://www.producthunt.com/products/replit/reviews",
@@ -84,6 +84,10 @@ PRODUCTHUNT_URLS: dict[str, str] = {
     "opencode": "https://www.producthunt.com/products/opencode/reviews",
     "base44": "https://www.producthunt.com/products/base44/reviews",
     "google-antigravity": "https://www.producthunt.com/products/google-antigravity/reviews",
+    "github-copilot": "https://www.producthunt.com/products/github-copilot/reviews",
+    "bubble": "https://www.producthunt.com/products/bubble/reviews",
+    "glide": "https://www.producthunt.com/products/glide/reviews",
+    "taskade-genesis": "https://www.producthunt.com/products/taskade/reviews",
 }
 
 URL_MAPS = {
@@ -255,46 +259,96 @@ def _parse_producthunt_markdown(md: str) -> list[dict]:
     """Extract reviews from Product Hunt markdown.
 
     Product Hunt review pages have:
-    - User reviews with star ratings (1-5) or upvotes
-    - Comment threads with pros/cons discussion
-    - Maker responses
+    - Overall rating + review count at top
+    - Pros/Cons aggregated tags
+    - Individual reviews with author, what-they-built, body text
     """
     reviews = []
-    # Product Hunt reviews are often separated by user avatars, dividers, or headings
-    sections = re.split(r"\n---\n|\n###\s|\n####\s", md)
+    
+    # Extract overall product info from the header
+    overall_rating = None
+    rating_match = re.search(r"(\d+\.?\d*)\s*\n+\s*Based on (\d+) reviews?", md[:3000])
+    if rating_match:
+        try:
+            overall_rating = int(float(rating_match.group(1)))
+        except ValueError:
+            pass
 
-    for section in sections:
+    # Extract Pros and Cons sections
+    pros_section = ""
+    cons_section = ""
+    pros_match = re.search(r"Pros\n\n(.+?)\n\nCons\n\n(.+?)(?:\n\n!|\n\nReview)", md, re.DOTALL)
+    if pros_match:
+        pros_section = pros_match.group(1)
+        cons_section = pros_match.group(2)
+    
+    # Individual reviews are formatted as:
+    # ![Avatar](url)
+    # [UserName](profile_url)
+    # used [Tool](url) to build [Project](url) / instead of X / • N reviews
+    # #### What's great / What could be better
+    # ... review body ...
+    
+    # Split by user avatar pattern (markdown image followed by linked name)
+    review_sections = re.split(
+        r"\n!\[.*?\]\(https://ph-avatars\.imgix\.net/.*?\)\n",
+        md
+    )
+    
+    for section in review_sections[1:]:  # Skip header before first review
         section = section.strip()
-        if len(section) < 60:
+        if len(section) < 80:
             continue
-
-        lines = [l.strip() for l in section.split("\n") if l.strip()]
-        title = lines[0] if lines else ""
-
-        # Try to find star rating
-        rating = None
-        star_match = re.search(r"(\d)(?:\.\d)?\s*(?:out of|/)\s*5", section)
-        if star_match:
-            try:
-                rating = int(float(star_match.group(1)))
-            except ValueError:
-                pass
-
-        # Try to find author
+            
+        # Extract author name
         author = ""
-        author_match = re.search(r"(?:by|from|—)\s*([\w\s\.@]+)", title)
+        author_match = re.match(r"\[([^\]]+)\]\(https://www\.producthunt\.com/@[\w-]+\)", section)
         if author_match:
             author = author_match.group(1).strip()
-
-        body = "\n".join(lines[1:5]) if len(lines) > 1 else ""
-
+        
+        # Extract review body — everything after "What's great" or similar heading
+        body = section
+        body_start = re.search(r"####\s+(?:What|Review|Overall)", section)
+        if body_start:
+            body = section[body_start.end():].strip()
+        
+        # Clean up metadata lines from body
+        body_lines = []
+        for line in body.split("\n"):
+            line = line.strip()
+            # Skip metadata lines
+            if re.match(r"^(?:used|instead of|• \d+ reviews)", line):
+                continue
+            if line.startswith("[") and "producthunt.com" in line:
+                continue
+            if line and not line.startswith("!"):
+                body_lines.append(line)
+        body = "\n".join(body_lines[:10])  # Limit to 10 lines
+        
+        if len(body) < 30:
+            continue
+        
         reviews.append({
-            "title": title[:200] if title else None,
+            "title": None,
             "body": body[:2000],
             "author": author,
-            "rating": rating,
+            "rating": overall_rating,  # Use overall product rating
         })
-
+    
+    # If we couldn't parse individual reviews, extract pros/cons as review content
+    if not reviews and (pros_section or cons_section):
+        body_parts = []
+        if pros_section:
+            body_parts.append(f"Pros: {pros_section}")
+        if cons_section:
+            body_parts.append(f"Cons: {cons_section}")
+        reviews.append({
+            "title": None,
+            "body": "\n".join(body_parts)[:2000],
+            "author": "",
+            "rating": overall_rating,
+        })
+    
     return reviews
 
 
