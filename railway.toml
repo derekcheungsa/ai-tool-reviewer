@@ -1,6 +1,3 @@
-# Railway config
-[build]
-  dockerfilePath = "./Dockerfile"
-
+# Railway config — using Railpack (env vars configured in Railway dashboard)
 [deploy]
   startCommand = "./start.sh"
