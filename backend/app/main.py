@@ -83,18 +83,32 @@ def list_tools(
 
 # ── GET /api/tools/{id} ──────────────────────────────────────────────
 
-@app.get("/api/tools/{tool_id}", response_model=ToolDetailOut)
-def get_tool(tool_id: str, db: Session = Depends(get_db)):
-    """Return tool details, its reviews, and sentiment summaries."""
+@app.get("/api/tools/{tool_id_or_slug}", response_model=ToolDetailOut)
+def get_tool(tool_id_or_slug: str, db: Session = Depends(get_db)):
+    """Return tool details, its reviews, and sentiment summaries.
+
+    Accepts either a UUID (tool id) or a URL slug.
+    """
+    # Try UUID first, then slug lookup
     tool = (
         db.query(Tool)
         .options(
             joinedload(Tool.reviews),
             joinedload(Tool.sentiment_summaries),
         )
-        .filter(Tool.id == tool_id)
+        .filter(Tool.id == tool_id_or_slug)
         .first()
     )
+    if not tool:
+        tool = (
+            db.query(Tool)
+            .options(
+                joinedload(Tool.reviews),
+                joinedload(Tool.sentiment_summaries),
+            )
+            .filter(Tool.slug == tool_id_or_slug)
+            .first()
+        )
     if not tool:
         raise HTTPException(status_code=404, detail="Tool not found")
     return tool
