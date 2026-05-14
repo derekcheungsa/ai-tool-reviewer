@@ -105,21 +105,23 @@ export function ToolDetailClient({ tool }: ToolDetailClientProps) {
         )}
 
         {/* Pricing */}
-        {tool.pricing && (
-          <div className="flex flex-wrap gap-2 mt-3">
-            {Object.entries(tool.pricing)
-              .filter(([, v]) => v)
-              .map(([tier, price]) => (
-                <Badge
-                  key={tier}
-                  variant="secondary"
-                  className="text-xs capitalize"
-                >
+        {tool.pricing && (() => {
+          const pricing: Record<string, string> =
+            typeof tool.pricing === "string"
+              ? (() => { try { return JSON.parse(tool.pricing); } catch { return {}; } })()
+              : (tool.pricing as Record<string, string>) || {};
+          const entries = Object.entries(pricing).filter(([, v]) => v);
+          if (entries.length === 0) return null;
+          return (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {entries.map(([tier, price]) => (
+                <Badge key={tier} variant="secondary" className="text-xs capitalize">
                   {tier}: {price}
                 </Badge>
               ))}
-          </div>
-        )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Sentiment Summary Cards */}
