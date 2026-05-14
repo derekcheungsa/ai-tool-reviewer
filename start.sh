@@ -6,7 +6,9 @@ echo "=== AI Tool Review Aggregator ==="
 
 # Start FastAPI backend in background (auto-seeds DB on startup)
 echo "Starting FastAPI backend on port 8000..."
-cd backend
+# Change to backend directory — works with any parent path
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/backend"
 # Use venv path if exists (Nixpacks), otherwise system python (Docker)
 if [ -f /opt/venv/bin/python3 ]; then
   PYTHON=/opt/venv/bin/python3
