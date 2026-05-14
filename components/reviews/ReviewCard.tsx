@@ -23,7 +23,9 @@ export function ReviewCard({ review }: ReviewCardProps) {
   const isLong = review.body.length > PREVIEW_LENGTH;
   const [expanded, setExpanded] = useState(false);
 
-  const bodyText = expanded || !isLong ? review.body : review.body.slice(0, PREVIEW_LENGTH).trim() + "...";
+  const bodyText = expanded || !isLong
+    ? review.body
+    : review.body.slice(0, PREVIEW_LENGTH).trim() + "...";
 
   return (
     <Card className="border-border bg-card hover:border-muted-foreground/30 transition-colors">
