@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "provider": "node",
+  "packages": {
+    "node": "20",
+    "python": "3.12"
+  },
+  "buildAptPackages": ["python3-pip"],
+  "steps": {
+    "install": {
+      "commands": [
+        "npm ci",
+        "pip3 install -r backend/requirements.txt"
+      ]
+    },
+    "build": {
+      "inputs": [{ "step": "install" }],
+      "commands": ["npm run build"]
+    }
+  },
+  "deploy": {
+    "startCommand": "./start.sh"
+  }
+}

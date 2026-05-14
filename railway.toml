@@ -1,4 +1,4 @@
-# Railway config — use Dockerfile
+# Railway config
 [build]
   dockerfilePath = "./Dockerfile"
 
