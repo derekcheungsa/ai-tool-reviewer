@@ -8,6 +8,7 @@
   "buildAptPackages": ["python3-pip"],
   "steps": {
     "install": {
+      "inputs": [{ "local": true }],
       "commands": [
         "npm ci",
         "pip3 install -r backend/requirements.txt"
@@ -19,6 +20,10 @@
     }
   },
   "deploy": {
+    "inputs": [
+      { "step": "build" },
+      { "step": "install" }
+    ],
     "startCommand": "./start.sh"
   }
 }
