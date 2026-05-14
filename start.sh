@@ -28,3 +28,4 @@ NEXT_PUBLIC_API_URL="http://localhost:8000" npx next start --port ${PORT:-3000} 
 
 # If Next.js exits, kill backend
 kill $BACKEND_PID 2>/dev/null
+# cache-bust: v2
