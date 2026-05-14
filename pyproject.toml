@@ -1,0 +1,15 @@
+[project]
+name = "ai-tool-reviewer-backend"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "sqlalchemy",
+    "psycopg2-binary",
+    "httpx",
+    "pydantic-settings",
+    "loguru",
+    "textblob",
+    "vaderSentiment",
+]
