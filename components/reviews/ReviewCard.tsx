@@ -23,6 +23,7 @@ export function ReviewCard({ review }: ReviewCardProps) {
   const isLong = review.body.length > PREVIEW_LENGTH;
   const [expanded, setExpanded] = useState(false);
 
+  // REVIEWCARD-V2: expandable reviews deployed
   const bodyText = expanded || !isLong
     ? review.body
     : review.body.slice(0, PREVIEW_LENGTH).trim() + "...";
