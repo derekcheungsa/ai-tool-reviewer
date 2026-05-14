@@ -1,14 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Review, SOURCE_CONFIG } from "@/lib/types";
 import {
   getSentimentBadgeColor,
   getStarRating,
   formatDate,
-  truncate,
 } from "@/lib/helpers";
+
+const PREVIEW_LENGTH = 300;
 
 interface ReviewCardProps {
   review: Review;
@@ -17,6 +20,10 @@ interface ReviewCardProps {
 export function ReviewCard({ review }: ReviewCardProps) {
   const sourceConfig = SOURCE_CONFIG[review.source];
   const sentimentColor = getSentimentBadgeColor(review.sentimentLabel || undefined);
+  const isLong = review.body.length > PREVIEW_LENGTH;
+  const [expanded, setExpanded] = useState(false);
+
+  const bodyText = expanded || !isLong ? review.body : review.body.slice(0, PREVIEW_LENGTH).trim() + "...";
 
   return (
     <Card className="border-border bg-card hover:border-muted-foreground/30 transition-colors">
@@ -61,10 +68,22 @@ export function ReviewCard({ review }: ReviewCardProps) {
           </h4>
         )}
 
-        {/* Body excerpt */}
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          {truncate(review.body, 300)}
-        </p>
+        {/* Body — expandable */}
+        <div>
+          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+            {bodyText}
+          </p>
+          {isLong && (
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto p-0 text-xs text-primary hover:text-primary/80 mt-1"
+              onClick={() => setExpanded(!expanded)}
+            >
+              {expanded ? "Show less" : "Show more"}
+            </Button>
+          )}
+        </div>
 
         {/* Footer: Date + Link */}
         <div className="flex items-center justify-between pt-1 border-t border-border/50">
