@@ -23,6 +23,12 @@ export function ToolCard({ tool }: ToolCardProps) {
   const reviewCount = tool.sentimentSummary?.reviewCount ?? 0;
   const category = normalizeCategory(tool.category);
 
+  // Parse pricing JSON string from API into an object
+  const pricing: Record<string, string> =
+    typeof tool.pricing === "string"
+      ? (() => { try { return JSON.parse(tool.pricing); } catch { return {}; } })()
+      : (tool.pricing as Record<string, string>) || {};
+
   return (
     <Link href={`/tools/${tool.slug}`}>
       <Card className="card-hover group cursor-pointer h-full border-border bg-card">
@@ -80,9 +86,9 @@ export function ToolCard({ tool }: ToolCardProps) {
           </div>
 
           {/* Pricing hint */}
-          {tool.pricing && (
+          {Object.keys(pricing).length > 0 && (
             <div className="text-xs text-muted-foreground pt-1 border-t border-border/50">
-              {Object.entries(tool.pricing)
+              {Object.entries(pricing)
                 .filter(([, v]) => v)
                 .slice(0, 2)
                 .map(([tier, price]) => (
