@@ -123,11 +123,15 @@ class ToolWithSummary(ToolOut):
             for s in self.sentiment_summaries
         )
 
+        merged_rating = round(weighted_rating / total_reviews, 2)
+        # Clamp to valid 0-5 range
+        merged_rating = max(0.0, min(5.0, merged_rating))
+
         return SentimentSummaryOut(
             id="merged",
             tool_id=self.id,
             source="all",
-            avg_rating=round(weighted_rating / total_reviews, 2),
+            avg_rating=merged_rating,
             avg_sentiment=round(weighted_sentiment / total_reviews, 4),
             positive_pct=round(weighted_pos / total_reviews, 1),
             neutral_pct=round(weighted_neu / total_reviews, 1),

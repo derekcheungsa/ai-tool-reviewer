@@ -97,8 +97,9 @@ export function getCategoryColor(category: string): string {
 
 // Generate star rating display (1-5)
 export function getStarRating(rating: number | null): string {
-  if (rating === null) return "☆☆☆☆☆";
-  const full = Math.round(rating);
+  if (rating === null || rating === undefined) return "☆☆☆☆☆";
+  const clamped = Math.max(0, Math.min(5, rating));
+  const full = Math.round(clamped);
   return "★".repeat(full) + "☆".repeat(5 - full);
 }
 
