@@ -196,6 +196,7 @@ def trigger_scrape(
     source: str,
     tool_slug: str | None = None,
     dry_run: bool = False,
+    max_pages: int = 5,
 ):
     """Trigger a scraper run. source: reddit, trustpilot, or g2."""
     from database import SessionLocal
@@ -206,7 +207,7 @@ def trigger_scrape(
             results = scrape_reddit(db, tool_slug=tool_slug, dry_run=dry_run)
         elif source in ("trustpilot", "g2", "producthunt"):
             from scrapers.firecrawl_scraper import scrape_firecrawl
-            results = scrape_firecrawl(db, source=source, tool_slug=tool_slug, dry_run=dry_run)
+            results = scrape_firecrawl(db, source=source, tool_slug=tool_slug, dry_run=dry_run, max_pages=max_pages)
         else:
             return {"error": f"Unknown source: {source}"}
         return {"status": "ok", "source": source, "results": results}

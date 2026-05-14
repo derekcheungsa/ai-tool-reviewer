@@ -359,8 +359,13 @@ def scrape_firecrawl(
     source: str = "trustpilot",
     tool_slug: str | None = None,
     dry_run: bool = False,
+    max_pages: int = 5,
 ) -> dict:
-    """Scrape reviews using Firecrawl for one source and one or all tools."""
+    """Scrape reviews using Firecrawl for one source and one or all tools.
+
+    Paginates through review pages (G2 and Product Hunt support ?page=N).
+    Stops early for a tool when a page yields 0 new reviews.
+    """
     api_key = settings.firecrawl_api_key
     if not api_key:
         logger.warning("FIRECRAWL_API_KEY not set — Firecrawl scraper disabled")
@@ -379,63 +384,79 @@ def scrape_firecrawl(
     results: dict[str, int] = {}
 
     for tool in tools:
-        page_url = url_map.get(tool.slug)
-        if not page_url:
+        base_url = url_map.get(tool.slug)
+        if not base_url:
             logger.debug(f"No {source} URL for {tool.slug}, skipping")
             continue
 
         run = get_or_create_collection_run(db, source, tool.slug)
-        new_count = 0
+        tool_total_new = 0
+        tool_total_parsed = 0
 
-        try:
-            logger.info(f"Firecrawl scraping {source}: {tool.name} → {page_url}")
-            markdown = firecrawl_scrape(page_url, api_key, source=source)
-        except Exception as exc:
-            logger.error(f"Firecrawl error for {tool.slug}: {exc}")
-            finish_collection_run(db, run, items_collected=0, items_new=0, error=str(exc))
-            continue
+        for page in range(1, max_pages + 1):
+            # Build paginated URL (G2 and PH both use ?page=N)
+            if page == 1:
+                page_url = base_url
+            else:
+                sep = "&" if "?" in base_url else "?"
+                page_url = f"{base_url}{sep}page={page}"
 
-        if not markdown:
-            logger.warning(f"No content returned for {tool.slug}")
-            finish_collection_run(db, run, items_collected=0, items_new=0)
-            continue
+            try:
+                logger.info(f"Firecrawl scraping {source} [{tool.slug}] page {page}: {page_url}")
+                markdown = firecrawl_scrape(page_url, api_key, source=source)
+            except Exception as exc:
+                logger.error(f"Firecrawl error for {tool.slug} page {page}: {exc}")
+                break  # Stop paginating on error
 
-        reviews = parse_reviews(markdown, source)
-        logger.info(f"{source} [{tool.slug}]: parsed {len(reviews)} reviews from markdown")
+            if not markdown:
+                logger.warning(f"No content for {tool.slug} page {page}")
+                break  # Stop paginating on empty
 
-        for i, review in enumerate(reviews):
-            source_id = f"{tool.slug}-{source}-{i}"
+            reviews = parse_reviews(markdown, source)
+            logger.info(f"{source} [{tool.slug}] page {page}: parsed {len(reviews)} reviews")
 
-            if review_exists(db, source, source_id):
-                continue
+            page_new = 0
+            for i, review in enumerate(reviews):
+                source_id = f"{tool.slug}-{source}-p{page}-{i}"
 
-            if not review.get("body"):
-                continue
+                if review_exists(db, source, source_id):
+                    continue
 
-            if dry_run:
-                logger.info(f"[DRY RUN] {source}: {review.get('title', '')[:80]}")
-                new_count += 1
-                continue
+                if not review.get("body"):
+                    continue
 
-            store_review(
-                db,
-                tool_id=tool.id,
-                source=source,
-                source_id=source_id,
-                title=review.get("title"),
-                body=review["body"],
-                url=page_url,
-                author=review.get("author"),
-                rating=review.get("rating"),
-            )
-            new_count += 1
+                if dry_run:
+                    logger.info(f"[DRY RUN] {source}: {review.get('title', '')[:80]}")
+                    page_new += 1
+                    continue
 
-        if new_count > 0 and not dry_run:
+                store_review(
+                    db,
+                    tool_id=tool.id,
+                    source=source,
+                    source_id=source_id,
+                    title=review.get("title"),
+                    body=review["body"],
+                    url=page_url,
+                    author=review.get("author"),
+                    rating=review.get("rating"),
+                )
+                page_new += 1
+
+            tool_total_parsed += len(reviews)
+            tool_total_new += page_new
+
+            # Stop paginating if this page had zero new reviews
+            if page_new == 0 and page > 1:
+                logger.info(f"{source} [{tool.slug}]: no new reviews on page {page}, stopping pagination")
+                break
+
+        if tool_total_new > 0 and not dry_run:
             recalc_sentiment_summary(db, tool.id, source)
 
-        finish_collection_run(db, run, items_collected=len(reviews), items_new=new_count)
-        results[tool.slug] = new_count
-        logger.info(f"Firecrawl {source} [{tool.slug}]: {len(reviews)} parsed, {new_count} new")
+        finish_collection_run(db, run, items_collected=tool_total_parsed, items_new=tool_total_new)
+        results[tool.slug] = tool_total_new
+        logger.info(f"Firecrawl {source} [{tool.slug}]: {tool_total_parsed} parsed, {tool_total_new} new across {min(page, max_pages)} pages")
 
     return results
 
@@ -444,7 +465,7 @@ def scrape_firecrawl(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Firecrawl review scraper")
-    parser.add_argument("--source", choices=["trustpilot", "g2"], default="trustpilot")
+    parser.add_argument("--source", choices=["trustpilot", "g2", "producthunt"], default="trustpilot")
     parser.add_argument("--tool-slug", help="Scrape a single tool by slug")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
