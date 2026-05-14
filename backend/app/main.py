@@ -111,6 +111,11 @@ def get_tool(tool_id_or_slug: str, db: Session = Depends(get_db)):
         )
     if not tool:
         raise HTTPException(status_code=404, detail="Tool not found")
+
+    # Filter out garbage reviews (page chrome scraped as reviews)
+    from scrapers.firecrawl_scraper import _is_garbage_markdown
+    tool.reviews = [r for r in tool.reviews if not _is_garbage_markdown(r.body)]
+
     return tool
 
 

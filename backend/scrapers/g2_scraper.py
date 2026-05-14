@@ -84,8 +84,43 @@ def fetch_g2_reviews(g2_slug: str, api_key: str, page: int = 1) -> dict:
     return resp.json()
 
 
-def _parse_g2_review(item: dict) -> dict:
-    """Normalize a G2 review item to our internal fields."""
+GARBAGE_MARKERS = [
+    "Sponsored",
+    "Leave a Review",
+    "Answer a few questions",
+    "Visit Website",
+    "out of 5 stars",
+    "Save to board",
+    "Product Information",
+    "freemium-gray-banner",
+    "Profile Status",
+    "G2 Sort",
+    "Search reviews",
+    "View Filters",
+    "Company Size",
+    "User Role",
+    "Clear Results",
+    "View Results",
+    "G2 reviews are authentic",
+    "Review Summary",
+    "Generated using AI",
+    "Pros & Cons",
+    "Generated from real user reviews",
+]
+
+
+def _is_garbage(body: str) -> bool:
+    """Detect page chrome / non-review content from G2 scraping."""
+    if not body or len(body.strip()) < 20:
+        return True
+    return any(marker.lower() in body.lower() for marker in GARBAGE_MARKERS)
+
+
+def _parse_g2_review(item: dict) -> dict | None:
+    """Normalize a G2 review item to our internal fields.
+
+    Returns None if the item is page chrome / not a real review.
+    """
     posted_raw = item.get("timestamp") or item.get("createdAt")
     posted_at = None
     if posted_raw:
@@ -99,10 +134,16 @@ def _parse_g2_review(item: dict) -> dict:
     dislikes = item.get("dislikes") or item.get("cons") or ""
     body = f"Pros: {likes}\nCons: {dislikes}" if likes or dislikes else (item.get("body") or "")
 
+    body = body.strip()
+
+    # Reject garbage (page chrome, not real reviews)
+    if _is_garbage(body):
+        return None
+
     return {
         "source_id": str(item.get("id") or item.get("reviewId")),
         "title": item.get("title") or item.get("headline"),
-        "body": body.strip(),
+        "body": body,
         "url": item.get("url"),
         "author": item.get("author") or item.get("authorName"),
         "author_verified": bool(item.get("verified") or item.get("verifiedCurrentUser")),
@@ -155,6 +196,8 @@ def scrape_g2(
 
             for item in reviews:
                 parsed = _parse_g2_review(item)
+                if parsed is None:
+                    continue
                 if not parsed["body"]:
                     continue
                 if review_exists(db, "g2", parsed["source_id"]):

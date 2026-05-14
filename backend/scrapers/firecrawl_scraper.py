@@ -208,6 +208,44 @@ def _parse_trustpilot_markdown(md: str) -> list[dict]:
     return reviews
 
 
+# ── Garbage detection ──────────────────────────────────────────────────
+
+G2_GARBAGE_MARKERS = [
+    "Sponsored",
+    "Leave a Review",
+    "Answer a few questions",
+    "Visit Website",
+    "out of 5 stars",
+    "Save to board",
+    "Product Information",
+    "freemium-gray-banner",
+    "Profile Status",
+    "G2 Sort",
+    "Search reviews",
+    "View Filters",
+    "Company Size",
+    "User Role",
+    "Clear Results",
+    "View Results",
+    "G2 reviews are authentic",
+    "Review Summary",
+    "Generated using AI",
+    "Pros & Cons",
+    "Generated from real user reviews",
+    "Filter Reviews",
+    "Claimed",
+    "How would you rate",
+    "_nps_score_",
+]
+
+
+def _is_garbage_markdown(text: str) -> bool:
+    """Detect page chrome / non-review sections from G2/Trustpilot markdown."""
+    if not text or len(text.strip()) < 30:
+        return True
+    return any(marker.lower() in text.lower() for marker in G2_GARBAGE_MARKERS)
+
+
 def _parse_g2_markdown(md: str) -> list[dict]:
     """Extract reviews from G2 markdown."""
     reviews = []
@@ -217,6 +255,10 @@ def _parse_g2_markdown(md: str) -> list[dict]:
     for section in sections:
         section = section.strip()
         if len(section) < 50:
+            continue
+
+        # Skip known non-review sections (page chrome)
+        if _is_garbage_markdown(section):
             continue
 
         lines = [l.strip() for l in section.split("\n") if l.strip()]
